@@ -331,10 +331,12 @@ class AlphaBetaPlayer(IsolationPlayer):
             # raised when the timer is about to expire.
 
             # Depth used for iterative deepening
-            depth = 1
-            while True:
-                best_move = self.alphabeta(game, depth)
+            depth = 0
+            # while True:
+            inf = float('inf')
+            while depth < inf:
                 depth += 1
+                best_move = self.alphabeta(game, depth)
 
         except SearchTimeout:
             return best_move
