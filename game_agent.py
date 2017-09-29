@@ -318,8 +318,30 @@ class AlphaBetaPlayer(IsolationPlayer):
         """
         self.time_left = time_left
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return -1, -1
+
+        # Initialize the best move so that this function returns something
+        # in case the search fails due to timeout
+        best_move = (-1, -1)
+
+        try:
+            # The try/except block will automatically catch the exception
+            # raised when the timer is about to expire.
+
+            # Depth used for iterative deepening
+            depth = 1
+            while True:
+                best_move = self.alphabeta(game, depth)
+                depth += 1
+
+        except SearchTimeout:
+            return best_move
+        return best_move
+
+        # Best move from the last recursive search iteration
+        return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -369,5 +391,78 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        results = self.alpha_beta_common(game, depth, alpha, beta, True)
+        best_move = results[1]
+        return best_move
+
+    def alpha_beta_common(self, game, depth, alpha, beta, get_max_value):
+        """Common code base for min_value and max_value
+            Checks for depth in order to return the score
+            or continue the recursive search also have
+            the terminal test that consist to check if there
+            are legal moves available
+
+        Parameters
+        ----------
+        get_max_value: int
+            Indicates if it will try to get the max value or the min value
+
+        Returns the highest(get_max_value=True) or lowest(get_max_value=False)
+        score/move tuple found in game
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        # Finally we are were we wanted! The max_depth
+        if depth == 0:
+            # So lets get the score
+            return self.score(game, self), None
+
+        # Terminal test
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (game.utility(self), (-1, -1))
+
+        # Are we going for the max value or the min value?
+        if get_max_value:
+            return self.alphabeta_max_value(game, legal_moves, depth,
+                                            alpha, beta)
+        else:
+            return self.alphabeta_min_value(game, legal_moves, depth,
+                                            alpha, beta)
+
+    def alphabeta_max_value(self, game, legal_moves, depth, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        highest_score = float('-inf')
+        selected_move = (-1, -1)
+        for move in legal_moves:
+            results = self.alpha_beta_common(game.forecast_move(
+                move), depth - 1, alpha, beta, False)
+            score = results[0]
+            if score > alpha:
+                alpha = score
+                highest_score, selected_move = score, move
+            if alpha >= beta:
+                # Let the prune happen
+                break
+        return (highest_score, selected_move)
+
+    def alphabeta_min_value(self, game, legal_moves, depth, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        lowest_score = float('inf')
+        selected_move = (-1, -1)
+        for move in legal_moves:
+            results = self.alpha_beta_common(game.forecast_move(
+                move), depth - 1, alpha, beta, True)
+            score = results[0]
+            if score < beta:
+                beta = score
+                lowest_score, selected_move = score, move
+            if beta <= alpha:
+                # Let the prune happen
+                break
+        return (lowest_score, selected_move)
