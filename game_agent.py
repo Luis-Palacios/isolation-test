@@ -112,6 +112,7 @@ class IsolationPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
+
     def __init__(self, search_depth=3, score_fn=custom_score, timeout=10.):
         self.search_depth = search_depth
         self.score = score_fn
@@ -212,8 +213,71 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        results = self.min_max_common(game, depth, True)
+        best_move = results[1]
+        return best_move
+
+    def min_max_common(self, game, depth, get_max_value):
+        """Common code base for min_value and max_value
+            Checks for depth in order to return the score
+            or continue the recursive search also have
+            the terminal test that consist to check if there
+            are legal moves available
+
+        Parameters
+        ----------
+        get_max_value: int
+            Indicates if it will try to get the max value or the min value
+
+        Returns the highest(get_max_value=True) or lowest(get_max_value=False)
+        score/move tuple found in game
+        """
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        # Finally we are were we wanted! The max_depth
+        if depth == 0:
+            # So lets get the score
+            return self.score(game, self), None
+
+        # Terminal test
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (game.utility(self), (-1, -1))
+
+        # Are we going for the max value or the min value?
+        if get_max_value is True:
+            return self.max_value(game, depth, legal_moves)
+        else:
+            return self.min_value(game, depth, legal_moves)
+
+    def max_value(self, game, depth, legal_moves):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        highest_score = float('-inf')
+        selected_move = (-1, -1)
+        for move in legal_moves:
+            results = self.min_max_common(
+                game.forecast_move(move), depth - 1, False)
+            score = results[0]
+            highest_score, selected_move = max(
+                (highest_score, selected_move), (score, move))
+        return (highest_score, selected_move)
+
+    def min_value(self, game, depth, legal_moves):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+
+        lowest_score = float('inf')
+        selected_move = (-1, -1)
+        for move in legal_moves:
+            results = self.min_max_common(
+                game.forecast_move(move), depth - 1, True)
+            score = results[0]
+            lowest_score, selected_move = min(
+                (lowest_score, selected_move), (score, move))
+        return (lowest_score, selected_move)
 
 
 class AlphaBetaPlayer(IsolationPlayer):
