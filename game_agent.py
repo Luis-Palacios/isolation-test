@@ -3,11 +3,24 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
+import math
 
 
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
+
+
+def calculate_distance(game, player, opp_player):
+    """Helper function to calculate the total distance between the player current
+    location and its opponent's location
+    """
+
+    player_location = game.get_player_location(player)
+    opponnent_location = game.get_player_location(opp_player)
+    x_distance = math.pow(player_location[0] - opponnent_location[0], 2)
+    y_distance = math.pow(player_location[1] - opponnent_location[1], 2)
+    return math.sqrt(x_distance + y_distance)
 
 
 def custom_score(game, player):
@@ -19,6 +32,10 @@ def custom_score(game, player):
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
 
+    Look ahead heuristic
+    Calculate the difference in the number of legal moves in the current state
+    of the game plus the number of legal moves of the next phase
+
     Parameters
     ----------
     game : `isolation.Board`
@@ -34,8 +51,26 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+
+    if game.is_loser(player):
+        return float('-inf')
+
+    if game.is_winner(player):
+        return float('inf')
+
+    player_legal_moves = game.get_legal_moves(player)
+    player_moves_length = len(player_legal_moves)
+    for legal_move in player_legal_moves:
+        next_phase = game.forecast_move(legal_move)
+        player_moves_length += len(next_phase.get_legal_moves())
+
+    opponent_legal_moves = game.get_legal_moves(game.get_opponent(player))
+    opponent_moves_length = len(opponent_legal_moves)
+    for legal_move in opponent_legal_moves:
+        next_phase = game.forecast_move(legal_move)
+        opponent_moves_length += len(next_phase.get_legal_moves())
+
+    return float(player_moves_length - opponent_moves_length)
 
 
 def custom_score_2(game, player):
@@ -45,6 +80,11 @@ def custom_score_2(game, player):
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
 
+    Run boy run
+    Get the max distance between the player and the opponent,
+    run away from the opponent. Returns the absolute difference
+    between the sum of the locations, higher distance means higher score.
+
     Parameters
     ----------
     game : `isolation.Board`
@@ -60,8 +100,18 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    opp_player = game.get_opponent(player)
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(opp_player))
+
+    distance = calculate_distance(game, player, opp_player)
+    return float((own_moves + distance) - opp_moves)
 
 
 def custom_score_3(game, player):
@@ -81,13 +131,31 @@ def custom_score_3(game, player):
         A player instance in the current game (i.e., an object corresponding to
         one of the player objects `game.__player_1__` or `game.__player_2__`.)
 
+    Dangerous chase
+    Get the min distance between the player and the opponent, chase
+    down the opponent. Returns the negative of the absolute difference
+    between the sum of the locations, smaller distance means higher scores
+
     Returns
     -------
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    opponent_location = game.get_player_location(game.get_opponent(player))
+    if opponent_location is None:
+        return 0
+
+    player_location = game.get_player_location(player)
+    if player_location is None:
+        return 0
+
+    return float(-abs(sum(opponent_location) - sum(player_location)))
 
 
 class IsolationPlayer:
@@ -324,8 +392,7 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         # Initialize the best move so that this function returns something
         # in case the search fails due to timeout
-        best_move = (-1, -1)
-
+        best_move = legal_moves[0]
         try:
             # The try/except block will automatically catch the exception
             # raised when the timer is about to expire.
@@ -339,8 +406,11 @@ class AlphaBetaPlayer(IsolationPlayer):
                 best_move = self.alphabeta(game, depth)
 
         except SearchTimeout:
-            return best_move
-        return best_move
+            pass
+
+        # Safety check
+        if best_move == (-1, -1) and legal_moves:
+            return legal_moves[0]
 
         # Best move from the last recursive search iteration
         return best_move
@@ -424,6 +494,7 @@ class AlphaBetaPlayer(IsolationPlayer):
         legal_moves = game.get_legal_moves()
         if not legal_moves:
             return (game.utility(self), (-1, -1))
+        # return 10, legal_moves[0]
 
         # Are we going for the max value or the min value?
         if get_max_value:
