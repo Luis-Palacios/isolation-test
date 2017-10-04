@@ -62,13 +62,19 @@ def custom_score(game, player):
     player_moves_length = len(player_legal_moves)
     for legal_move in player_legal_moves:
         next_phase = game.forecast_move(legal_move)
-        player_moves_length += len(next_phase.get_legal_moves())
+        # On next phase the player is the opponent
+        next_phase_player = next_phase.get_opponent(next_phase.active_player)
+        next_phase_moves = next_phase.get_legal_moves(next_phase_player)
+        player_moves_length += len(next_phase_moves)
 
     opponent_legal_moves = game.get_legal_moves(game.get_opponent(player))
     opponent_moves_length = len(opponent_legal_moves)
     for legal_move in opponent_legal_moves:
         next_phase = game.forecast_move(legal_move)
-        opponent_moves_length += len(next_phase.get_legal_moves())
+        # On the next phase the opponent is the active player
+        # So by default get_legal_moves use the active player
+        opponent_next_legal_moves = next_phase.get_legal_moves()
+        opponent_moves_length += len(opponent_next_legal_moves)
 
     return float(player_moves_length - opponent_moves_length)
 
@@ -410,6 +416,7 @@ class AlphaBetaPlayer(IsolationPlayer):
 
         # Safety check
         if best_move == (-1, -1) and legal_moves:
+            # Not giving up, we fight till the end!
             return legal_moves[0]
 
         # Best move from the last recursive search iteration
